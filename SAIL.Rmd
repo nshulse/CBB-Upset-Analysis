@@ -1,0 +1,74 @@
+---
+title: "Sports Analysis"
+author: "Noah Hulse"
+date: "2023-01-15"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+```
+Introduction: In March Madness high seeded teams often struggle and lose their first matchup. For example, a 16 seed has only beat a 1 seed once. I was thinking about what things high seeded teams could do to potentially increase their chance to upset their opponent. This led to me looking at Adjusted Tempo, (An estimate of the tempo (possessions per 40 minutes) a team would have against the team that wants to play at an average Division I tempo). I thought that if a high seeded team were to play slower, they would increase the variability of their matchup by reducing the number of possessions and sample size, thus increasing their chance to win. My analysis of this hypothesis and question is followed.
+
+The data set that I used is Andrew Sundberg's College Basketball Dataset from Kaggle. This data set contains information about college basketball teams from 2013 to 2021. There is data about the regular season, as well as the teams' seed and result in the March Madness tournament.
+
+First I read in the data set and created the table "upset" that only contains teams that are seeded 9 or higher that made it to the round of 32 (guaranteeing they played a lower seeded team and upset them). Then I created the table "upset.no" that also only contained teams seeded 9 or higher. I decided to filter out teams that were seeded 15 or 16 to remove some of the really bad teams that might skew the data. Then I filtered it again to only include teams that did not have an upset (Lost in round of 68 or 64).
+
+We can see that across 9 seasons an upset happened in the round of 64 63 times.
+```{r}
+data = read_csv("cbb2.csv")
+data
+```
+```{r}
+upset = data %>% filter(SEED > 8)  %>% filter(!grepl('R64', POSTSEASON)) %>% filter(!grepl('R68', POSTSEASON))
+upset
+
+upset.no = data %>% filter(SEED > 8) %>% filter(SEED < 15) %>% filter(grepl("R64|R68", POSTSEASON))
+upset.no
+```
+I then calculated the mean of Adjusted Tempo for the teams that had an upset and the teams that did not. We can see that the teams that did not have an upset played slightly faster. I performed a T test to see if this difference in Adjusted Tempo was significant. A p-value of .086 indicates that this evidence is signifcant.
+
+```{r}
+mean(upset$ADJ_T)
+mean(upset.no$ADJ_T)
+
+t.test(upset$ADJ_T, upset.no$ADJ_T)
+```
+
+I was curious as to if high seeded teams that made it even farther than the round of 32 played slower than the teams eliminated in the round of 32.
+```{r}
+upset.far = data %>% filter(SEED > 8) %>% filter (!grepl('R64|R68|R32', POSTSEASON))
+upset.far
+```
+We can see that the mean is slightly lower for just the teams that made it further than the round of 32 compared to all teams that got an upset. (66.79 vs 67.28)
+
+```{r}
+mean(upset.far$ADJ_T)
+
+```
+
+I wanted to make a variable that would tell me if a team had an upset or not, so I added a new column to the data "Upset" where a team received a 1 if they had an upset and a 0 if they did not.
+```{r}
+data.highseeds = data %>% filter(SEED > 8)
+
+data.upset <- data.highseeds %>% 
+  mutate(Upset = ifelse(POSTSEASON == "R64" | POSTSEASON == "R68", 0, 1))
+
+data.upset
+
+```
+Looking at the boxplot we can see that for the teams that did have an upset, the upper quartile, lower quartile, and mean for adjusted tempo were all lower than the teams that did not have an upset.
+
+```{r}
+boxplot(ADJ_T~Upset, data.upset)
+```
+
+In conclusion, there is evidence that a lower Adjusted Tempo could help high seeds in the March Madness tournament. If a coach knows that they are underdogs and need an upset, it could be beneficial to play slower.
+
